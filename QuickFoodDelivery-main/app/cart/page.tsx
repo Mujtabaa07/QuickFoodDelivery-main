@@ -59,7 +59,7 @@ export default function CartPage() {
                 Start Ordering
               </Button>
             </Link>
-            <p className="text-sm text-gray-500 mt-4">Managed by Admin Zeba Athiya</p>
+            <p className="text-sm text-gray-500 mt-4">Managed by Admins</p>
           </div>
         </div>
       </div>

@@ -234,7 +234,7 @@ export default function TrackOrderPage() {
                   Order Again
                 </Button>
               </Link>
-              <p className="text-center text-xs text-gray-500">Managed by Admin Zeba Athiya • QuickFood Mandya</p>
+              <p className="text-center text-xs text-gray-500">Managed by Admins • QuickFood Mandya</p>
             </div>
           </div>
         </div>

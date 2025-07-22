@@ -1,19 +1,20 @@
-require('dotenv').config();
-const { Sequelize } = require('sequelize');
+const mongoose = require('mongoose');
+const connectDB = require('../config/database');
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASS,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'mysql',
-    logging: false,
-  }
-);
+// Import all models
+const User = require('./User');
+const Restaurant = require('./Restaurant');
+const Category = require('./Category');
+const Food = require('./Food');
+const Order = require('./Order');
 
-sequelize.authenticate()
-  .then(() => console.log('✅ MySQL connection established'))
-  .catch(err => console.error('❌ Unable to connect to MySQL:', err));
+// Connect to database
+connectDB();
 
-module.exports = sequelize;
+module.exports = {
+  User,
+  Restaurant,
+  Category,
+  Food,
+  Order
+};

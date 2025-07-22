@@ -1,19 +1,22 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { ChefHat, Eye, EyeOff, User, Mail, Phone, MapPin } from "lucide-react"
+import { ChefHat, Eye, EyeOff, User, Mail, Phone, MapPin, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/context/auth-context"
+import { toast } from "sonner"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -24,6 +27,9 @@ export default function RegisterPage() {
     confirmPassword: "",
   })
 
+  const { register } = useAuth()
+  const router = useRouter()
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
       ...prev,
@@ -31,16 +37,38 @@ export default function RegisterPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!")
+      toast.error("Passwords don't match!")
       return
     }
-    // Handle registration logic here
-    console.log("Registration attempt:", formData)
-    // Redirect to home page after successful registration
-    window.location.href = "/"
+
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      await register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        address: formData.address,
+      })
+      toast.success("Registration successful! Welcome to QuickFood!")
+      router.push("/")
+    } catch (error: any) {
+      console.error("Registration error:", error)
+      toast.error(error.message || "Registration failed. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -254,9 +282,17 @@ export default function RegisterPage() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 rounded-lg shadow-lg transform transition hover:scale-105"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 rounded-lg shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Create Account
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
             </form>
 
@@ -272,7 +308,7 @@ export default function RegisterPage() {
               </div>
 
               {/* Social Registration */}
-              <div className="mt-6 grid grid-cols-3 gap-3">
+              {/* <div className="mt-6 grid grid-cols-3 gap-3">
                 <Button variant="outline" className="border-red-200 hover:bg-red-50 bg-transparent">
                   <span className="text-sm font-medium">Google</span>
                 </Button>
@@ -282,7 +318,7 @@ export default function RegisterPage() {
                 <Button variant="outline" className="border-red-200 hover:bg-red-50 bg-transparent">
                   <span className="text-sm font-medium">OTP</span>
                 </Button>
-              </div>
+              </div> */}
             </div>
 
             {/* Login Link */}
@@ -300,7 +336,7 @@ export default function RegisterPage() {
         {/* Admin Info */}
         <div className="text-center">
           <p className="text-xs text-gray-500">🔒 Secure registration powered by QuickFood Security</p>
-          <p className="text-xs text-gray-400 mt-1">Managed by Admin Zeba Athiya • Mandya, Karnataka</p>
+          <p className="text-xs text-gray-400 mt-1">Managed by Admins • Mandya, Karnataka</p>
         </div>
       </div>
     </div>

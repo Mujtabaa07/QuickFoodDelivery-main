@@ -1,36 +1,168 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MapPin, Clock, Star, Truck, Plus, Minus, ShoppingCart, ChefHat, Heart } from "lucide-react"
+import { MapPin, Clock, Star, Truck, Plus, Minus, ShoppingCart, ChefHat, Heart, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useCart } from "@/context/cart-context"
-import { useParams } from "next/navigation" // Import useParams
-import { allRestaurants } from "@/data/restaurants" // Import allRestaurants
+import { useAuth } from "@/context/auth-context"
+import { useParams } from "next/navigation"
+import { restaurantAPI, foodAPI } from "@/lib/api"
+import Header from "@/components/Header"
+import { toast } from "sonner"
+
+interface Restaurant {
+  _id: string;
+  name: string;
+  description: string;
+  cuisine: string;
+  rating: number;
+  reviews: number;
+  deliveryTime: string;
+  deliveryFee: string;
+  image: string;
+  featured: boolean;
+  location: string;
+  priceRange: string;
+  address: string;
+  phone: string;
+  status: string;
+  todayOrders: number;
+  todayRevenue: number;
+}
+
+interface Food {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  category: string | { _id: string; name: string };
+  veg: boolean;
+  available: boolean;
+  restaurant: string;
+  rating?: number;
+  popular?: boolean;
+}
 
 export default function RestaurantPage() {
-  const { cart, addToCart, removeFromCart, getTotalItems, getTotalPrice } = useCart()
+  const { addToCart, getTotalItems, cart, getTotalPrice, removeFromCart } = useCart()
+  const { isAuthenticated, user } = useAuth()
   const [activeTab, setActiveTab] = useState("menu")
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
+  const [foods, setFoods] = useState<Food[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [quantities, setQuantities] = useState<{ [key: string]: number }>({})
+  
   const params = useParams()
-  const restaurantId = Number.parseInt(params.id as string) // Get ID from URL params
+  const restaurantId = params.id as string
 
-  const restaurant = allRestaurants.find((r) => r.id === restaurantId) // Find the restaurant
+  // Helper function to safely get category name
+  const getCategoryName = (category: string | { _id: string; name: string }): string => {
+    return typeof category === 'string' ? category : category.name;
+  }
+
+  useEffect(() => {
+    if (restaurantId) {
+      fetchRestaurantData()
+    }
+  }, [restaurantId])
+
+  const fetchRestaurantData = async () => {
+    try {
+      setIsLoading(true)
+      
+      // Fetch restaurant details
+      const restaurantData = await restaurantAPI.getById(restaurantId)
+      
+      // Check if we got valid restaurant data
+      if (!restaurantData || typeof restaurantData !== 'object') {
+        throw new Error('Invalid restaurant data received')
+      }
+      
+      setRestaurant(restaurantData)
+      
+      // Fetch foods for this restaurant
+      try {
+        const foodsData = await foodAPI.getAll({ restaurant: restaurantId })
+        setFoods(foodsData.foods || foodsData || [])
+      } catch (foodError) {
+        console.warn("Could not fetch foods for restaurant:", foodError)
+        // Continue without foods if there's an error
+        setFoods([])
+      }
+      
+    } catch (error: any) {
+      console.error("Error fetching restaurant data:", error)
+      toast.error(error.message || "Failed to load restaurant details")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAddToCart = (food: Food) => {
+    if (!restaurant) {
+      console.error('No restaurant data available')
+      toast.error('Restaurant information not available')
+      return
+    }
+    
+    console.log('Adding to cart:', {
+      id: food._id,
+      name: food.name,
+      price: food.price,
+      image: food.image,
+      restaurant: restaurant.name,
+      restaurantId: restaurant._id
+    })
+    
+    addToCart({
+      id: food._id,
+      name: food.name,
+      price: food.price,
+      image: food.image,
+      restaurant: restaurant.name,
+      restaurantId: restaurant._id
+    })
+  }
+
+  const updateQuantity = (foodId: string, delta: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [foodId]: Math.max(0, (prev[foodId] || 0) + delta)
+    }))
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-white">
+        <Header />
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+          <span className="ml-2 text-gray-600">Loading restaurant...</span>
+        </div>
+      </div>
+    )
+  }
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-white">
-        <Card className="p-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Restaurant Not Found</h1>
-          <p className="text-gray-600 mb-6">The restaurant you are looking for does not exist or has been removed.</p>
-          <Link href="/restaurants">
-            <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700">
-              Back to Restaurants
-            </Button>
-          </Link>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-white">
+        <Header />
+        <div className="min-h-screen flex items-center justify-center">
+          <Card className="p-8 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Restaurant Not Found</h1>
+            <p className="text-gray-600 mb-6">The restaurant you are looking for does not exist or has been removed.</p>
+            <Link href="/restaurants">
+              <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700">
+                Back to Restaurants
+              </Button>
+            </Link>
+          </Card>
+        </div>
       </div>
     )
   }
@@ -111,7 +243,7 @@ export default function RestaurantPage() {
               </div>
               <div className="flex items-center space-x-2">
                 <Heart className="h-5 w-5 text-red-500" />
-                <span className="text-sm text-gray-600">Admin Zeba Athiya Approved ✓</span>
+                <span className="text-sm text-gray-600">Admins Approved ✓</span>
               </div>
             </div>
             <div className="flex items-center space-x-1 text-gray-600 mt-4">
@@ -138,88 +270,76 @@ export default function RestaurantPage() {
               </TabsList>
 
               <TabsContent value="menu" className="space-y-8 mt-6">
-                {restaurant.menuCategories.map(
-                  (
-                    category, // Use restaurant's specific menu categories
-                  ) => (
-                    <div key={category.name}>
-                      <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b-2 border-red-200 pb-2">
-                        {category.name}
-                      </h2>
-                      <div className="grid gap-6">
-                        {category.items.map((item) => (
-                          <Card
-                            key={item.id}
-                            className="hover:shadow-xl transition-all duration-300 border-2 hover:border-red-200"
-                          >
-                            <CardContent className="p-6">
-                              <div className="flex items-center space-x-6">
-                                <img
-                                  src={item.image || "/placeholder.svg?height=100&width=100&query=Indian food"}
-                                  alt={item.name}
-                                  className="w-24 h-24 object-cover rounded-xl border-2 border-red-100"
-                                />
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-3 mb-2">
-                                    <h3 className="font-bold text-xl text-gray-900">{item.name}</h3>
-                                    <div
-                                      className={`w-5 h-5 border-2 rounded ${item.veg ? "border-green-600" : "border-red-600"}`}
-                                    >
-                                      <div
-                                        className={`w-3 h-3 rounded-full m-0.5 ${item.veg ? "bg-green-600" : "bg-red-600"}`}
-                                      ></div>
-                                    </div>
-                                    {item.popular && (
-                                      <Badge className="bg-gradient-to-r from-red-500 to-red-600">🔥 Popular</Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-gray-600 mb-3 leading-relaxed">{item.description}</p>
-                                  <div className="flex items-center space-x-4">
-                                    <div className="flex items-center space-x-1">
-                                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                      <span className="text-sm font-medium">{item.rating}</span>
-                                    </div>
-                                    <span className="text-2xl font-bold text-red-600">₹{item.price}</span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                  {cart[item.id] && cart[item.id].quantity > 0 && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => removeFromCart(item.id)}
-                                      className="border-red-500 text-red-600 hover:bg-red-50"
-                                    >
-                                      <Minus className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  {cart[item.id] && cart[item.id].quantity > 0 && (
-                                    <span className="w-8 text-center font-bold text-lg">{cart[item.id].quantity}</span>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      addToCart({
-                                        id: item.id,
-                                        name: item.name,
-                                        price: item.price,
-                                        image: item.image,
-                                        restaurant: restaurant.name,
-                                      })
-                                    }
-                                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                {/* Group foods by category */}
+                {[...new Set(foods.map(food => getCategoryName(food.category)))].map(categoryName => (
+                  <div key={categoryName}>
+                    <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b-2 border-red-200 pb-2">
+                      {categoryName}
+                    </h2>
+                    <div className="grid gap-6">
+                      {foods.filter(food => getCategoryName(food.category) === categoryName).map((food) => (
+                        <Card
+                          key={food._id}
+                          className="hover:shadow-xl transition-all duration-300 border-2 hover:border-red-200"
+                        >
+                          <CardContent className="p-6">
+                            <div className="flex items-center space-x-6">
+                              <img
+                                src={food.image || "/placeholder.svg?height=100&width=100&query=Indian food"}
+                                alt={food.name}
+                                className="w-24 h-24 object-cover rounded-xl border-2 border-red-100"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="font-bold text-xl text-gray-900">{food.name}</h3>
+                                  <div
+                                    className={`w-5 h-5 border-2 rounded ${food.veg ? "border-green-600" : "border-red-600"}`}
                                   >
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
+                                    <div
+                                      className={`w-3 h-3 rounded-full m-0.5 ${food.veg ? "bg-green-600" : "bg-red-600"}`}
+                                    ></div>
+                                  </div>
+                                  {food.available && (
+                                    <Badge className="bg-gradient-to-r from-green-500 to-green-600">Available</Badge>
+                                  )}
+                                </div>
+                                <p className="text-gray-600 mb-3 leading-relaxed">{food.description}</p>
+                                <div className="flex items-center space-x-4">
+                                  <span className="text-2xl font-bold text-red-600">₹{food.price}</span>
                                 </div>
                               </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
+                              <div className="flex items-center space-x-3">
+                                {cart[food._id] && cart[food._id].quantity > 0 && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => removeFromCart(food._id)}
+                                    className="border-red-500 text-red-600 hover:bg-red-50"
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {cart[food._id] && cart[food._id].quantity > 0 && (
+                                  <span className="w-8 text-center font-bold text-lg">{cart[food._id].quantity}</span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAddToCart(food)}
+                                  className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                                  disabled={!food.available}
+                                  title={!isAuthenticated ? "Please login to add items to cart" : "Add to cart"}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  {!isAuthenticated && <span className="ml-1 text-xs">Login Required</span>}
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                  ),
-                )}
+                  </div>
+                ))}
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-6">
@@ -266,7 +386,7 @@ export default function RestaurantPage() {
                         </div>
                         <p className="text-gray-700 leading-relaxed">
                           {review === 1
-                            ? "बहुत ही स्वादिष्ट biryani! Hyderabadi style perfect था। Admin Zeba Athiya ने सच में अच्छा restaurant choose किया है।"
+                            ? "बहुत ही स्वादिष्ट biryani! Hyderabadi style perfect था। Admins ने सच में अच्छा restaurant choose किया है।"
                             : review === 2
                               ? "Amazing food quality and fast delivery. The Mysore Masala Dosa was authentic and delicious!"
                               : review === 3
@@ -305,7 +425,7 @@ export default function RestaurantPage() {
                       <div>
                         <h3 className="font-bold text-lg mb-2 text-red-600">Admin Approval</h3>
                         <p className="text-gray-700">
-                          ✅ Verified by Admin Zeba Athiya for quality and hygiene standards
+                          ✅ Verified by Admins for quality and hygiene standards
                         </p>
                       </div>
                     </CardContent>
@@ -353,7 +473,7 @@ export default function RestaurantPage() {
                       Proceed to Checkout
                     </Button>
                   </Link>
-                  <p className="text-xs text-gray-500 text-center mt-3">Managed by Admin Zeba Athiya • Safe & Secure</p>
+                  <p className="text-xs text-gray-500 text-center mt-3">Managed by Admins • Safe & Secure</p>
                 </CardContent>
               </Card>
             </div>

@@ -1,8 +1,16 @@
 const express = require('express');
 const cors = require('cors');
-const sequelize = require('./models'); // Connects to DB via models/index.js
+require('dotenv').config();
+
+// Import models to establish connections
+require('./models/index');
+
+// Import routes
+const authRoutes = require('./routes/authRoutes');
 const foodRoutes = require('./routes/foodRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const restaurantRoutes = require('./routes/restaurantRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Initialize express app
 const app = express();
@@ -13,17 +21,20 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/restaurants', restaurantRoutes);
+app.use('/api/admin', adminRoutes);
 
-// Sync Sequelize models and start the server
-sequelize.sync({ force: false })
-  .then(() => {
-    console.log('📦 Tables synced');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('❌ Failed to sync database:', err);
-  });
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'QuickFood API is running with MongoDB!' });
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`🚀 QuickFood API server running on http://localhost:${PORT}`);
+  console.log(`📊 Admin Dashboard: http://localhost:3000/admin`);
+  console.log(`🍃 Using MongoDB Atlas database`);
+});

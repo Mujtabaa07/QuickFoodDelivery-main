@@ -465,7 +465,7 @@ export default function CheckoutPage() {
                       By placing your order, you agree to QuickFood's Terms of Service and Privacy Policy
                     </p>
                     <p className="text-xs text-gray-500">🔒 Secure payment powered by QuickFood</p>
-                    <p className="text-xs text-gray-500">Managed by Admin Zeba Athiya</p>
+                    <p className="text-xs text-gray-500">Managed by Admins </p>
                   </div>
                 </CardContent>
               </Card>

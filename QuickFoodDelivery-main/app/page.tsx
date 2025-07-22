@@ -1,11 +1,27 @@
+'use client';
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, Clock, Star, Truck, ChefHat, Heart } from "lucide-react"
+import { Search, MapPin, Clock, Star, Truck, ChefHat, Heart, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { allRestaurants } from "@/data/restaurants" // Import allRestaurants
+import Header from "@/components/Header"
+import { restaurantAPI } from "@/lib/api"
 
-const featuredRestaurants = allRestaurants.filter((r) => r.featured) // Filter for featured restaurants
+interface Restaurant {
+  _id: string;
+  name: string;
+  description: string;
+  cuisine: string;
+  rating: number;
+  deliveryTime: string;
+  image: string;
+  isOpen: boolean;
+  location?: string;
+  deliveryFee?: string;
+  featured?: boolean;
+}
 
 const categories = [
   { name: "Biryani", icon: "🍛", count: 25, color: "bg-red-100" },
@@ -17,43 +33,27 @@ const categories = [
 ]
 
 export default function HomePage() {
+  const [featuredRestaurants, setFeaturedRestaurants] = useState<Restaurant[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchFeaturedRestaurants()
+  }, [])
+
+  const fetchFeaturedRestaurants = async () => {
+    try {
+      const data = await restaurantAPI.getAll()
+      // Take first 6 restaurants as featured
+      setFeaturedRestaurants((data.restaurants || data).slice(0, 6))
+    } catch (error) {
+      console.error("Error fetching restaurants:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-white">
-      {/* Header */}
-      <header className="bg-white shadow-lg border-b-4 border-red-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center">
-                  <ChefHat className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
-                  QuickFood
-                </span>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-gray-600">
-                <MapPin className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-medium">Mandya, Karnataka</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="outline" className="border-red-500 text-red-600 hover:bg-red-50 bg-transparent">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700">
-                  Sign Up
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-red-600 via-red-500 to-red-700 text-white py-20 overflow-hidden">
@@ -120,7 +120,7 @@ export default function HomePage() {
           <div className="flex justify-between items-center mb-12">
             <div>
               <h2 className="text-4xl font-bold text-gray-900 mb-2">Top Restaurants in Mandya</h2>
-              <p className="text-xl text-gray-600">Curated by Admin Zeba Athiya</p>
+              <p className="text-xl text-gray-600">Curated by Admins</p>
             </div>
             <Link href="/restaurants">
               <Button variant="outline" className="border-red-500 text-red-600 hover:bg-red-50 bg-transparent">
@@ -130,7 +130,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {featuredRestaurants.map((restaurant) => (
-              <Link key={restaurant.id} href={`/restaurant/${restaurant.id}`}>
+              <Link key={restaurant._id} href={`/restaurant/${restaurant._id}`}>
                 <Card className="hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:-translate-y-3 border-2 hover:border-red-200 overflow-hidden">
                   <div className="relative">
                     <img
@@ -195,7 +195,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-2xl font-bold mb-4 text-gray-900">Quality Guaranteed</h3>
               <p className="text-gray-600 leading-relaxed">
-                Admin Zeba Athiya personally ensures quality and hygiene of every restaurant
+                Admins personally ensures quality and hygiene of every restaurant
               </p>
             </div>
             <div className="text-center group">
@@ -223,7 +223,7 @@ export default function HomePage() {
               <p className="text-red-200 mb-4">
                 Mandya's #1 food delivery app. Fresh, fast, and delicious food with just one click!
               </p>
-              <p className="text-sm text-red-300">Managed by Admin Zeba Athiya</p>
+              <p className="text-sm text-red-300">Managed by Admins</p>
             </div>
             <div>
               <h4 className="font-bold mb-4 text-lg">Company</h4>
@@ -282,7 +282,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-red-700 mt-8 pt-8 text-center text-red-200">
-            <p>&copy; 2024 QuickFood Mandya. All rights reserved. | Admin: Zeba Athiya</p>
+            <p>&copy; 2024 QuickFood Mandya. All rights reserved. | Admins</p>
           </div>
         </div>
       </footer>

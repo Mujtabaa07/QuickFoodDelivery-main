@@ -1,31 +1,51 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { ChefHat, Eye, EyeOff, Phone, Mail } from "lucide-react"
+import { ChefHat, Eye, EyeOff, Phone, Mail, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/context/auth-context"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const [loginType, setLoginType] = useState("email")
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     phone: "",
     password: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { login } = useAuth()
+  const router = useRouter()
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle login logic here
-    console.log("Login attempt:", formData)
-    // Redirect to home page after successful login
-    window.location.href = "/"
+    
+    if (!formData.email || !formData.password) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      await login(formData.email, formData.password)
+      toast.success("Login successful! Welcome back!")
+      router.push("/")
+    } catch (error: any) {
+      console.error("Login error:", error)
+      toast.error(error.message || "Login failed. Please check your credentials.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -48,7 +68,7 @@ export default function LoginPage() {
         <Card className="shadow-2xl border-2 border-red-100">
           <CardHeader className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-t-lg">
             <CardTitle className="text-center text-xl">Sign In to QuickFood</CardTitle>
-            <CardDescription className="text-center text-red-100">Managed by Admin Zeba Athiya</CardDescription>
+            <CardDescription className="text-center text-red-100">Managed by Admins </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -164,9 +184,17 @@ export default function LoginPage() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 rounded-lg shadow-lg transform transition hover:scale-105"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 rounded-lg shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Sign In
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </form>
 
@@ -210,7 +238,7 @@ export default function LoginPage() {
         {/* Admin Info */}
         <div className="text-center">
           <p className="text-xs text-gray-500">🔒 Secure login powered by QuickFood Security</p>
-          <p className="text-xs text-gray-400 mt-1">For support, contact Admin Zeba Athiya</p>
+          <p className="text-xs text-gray-400 mt-1">For support, contact Admins </p>
         </div>
       </div>
     </div>
